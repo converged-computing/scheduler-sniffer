@@ -33,6 +33,11 @@ You can see from events that it was scheduled to the sniffer:
 kubectl get events -o wide |  awk {'print $4" " $5" " $6'} | column -t | grep sniffer
 ```
 
+### Organization
+
+- [src](src) has code intending to be moved into the sig-scheduler-plugins repository
+- [sniffer](sniffer) is the sniffer service
+
 It would be cool to do this with eBPF, but I haven't found a good, working container base yet.
 
 ## Notes

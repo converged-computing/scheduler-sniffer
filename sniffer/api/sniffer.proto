@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option go_package = "github.com/converged-computing/scheduler-sniffer/sniffer/api";
+
+package api;
+
+service SnifferService {
+    rpc Send(SendRequest) returns (SendResponse) {}
+}
+
+message SendRequest {
+    string endpoint = 1;
+    string payload = 2;
+}
+
+message SendResponse {}
