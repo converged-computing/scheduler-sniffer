@@ -8,6 +8,12 @@ scheduler:
   replicaCount: 1
   leaderElect: false
 
+sniffer:
+  image: ghcr.io/converged-computing/sniffer-sidecar:latest
+  pullPolicy: Always
+  port: 4242
+
+# Here we use the default (no change)
 controller:
   name: scheduler-plugins-controller
   image: registry.k8s.io/scheduler-plugins/controller:v0.27.8

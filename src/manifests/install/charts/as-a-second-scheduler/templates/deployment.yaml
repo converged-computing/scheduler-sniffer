@@ -45,6 +45,16 @@ spec:
     spec:
       serviceAccountName: {{ .Values.scheduler.name }}
       containers:
+
+      # This is the sidecar service "sniffer"
+      - image: {{ .Values.sniffer.image }}
+        imagePullPolicy: {{ .Values.sniffer.pullPolicy }}
+        command:
+        - /go/src/sniffer/bin/sniffer
+        - --port={{ .Values.sniffer.port }}
+        name: sniffer
+
+      # This is the custom scheduler that ALSO builds kubernetes -> scheduler
       - command:
         - /bin/kube-scheduler
         - --config=/etc/kubernetes/scheduler-config.yaml
@@ -56,7 +66,7 @@ spec:
             port: 10259
             scheme: HTTPS
           initialDelaySeconds: 15
-        name: scheduler-plugins-scheduler
+        name: scheduler
         readinessProbe:
           httpGet:
             path: /healthz
