@@ -1,6 +1,3 @@
-plugins
-upstream
-scheduler-plugins
-sig-scheduler-plugins/pkg/sniffer/bin/
+upstreams
 sniffer/bin
 sniffer/vendor

@@ -64,7 +64,6 @@ const (
 
 // ScheduleOne does the entire scheduling workflow for a single pod. It is serialized on the scheduling algorithm's host fitting.
 func (sched *Scheduler) ScheduleOne(ctx context.Context) {
-	fmt.Println("SCHEDULE ONE")
 	logger := klog.FromContext(ctx)
 	podInfo, err := sched.NextPod(logger)
 	if err != nil {
@@ -148,6 +147,12 @@ func (sched *Scheduler) schedulingCycle(
 	logger := klog.FromContext(ctx)
 	pod := podInfo.Pod
 	scheduleResult, err := sched.SchedulePod(ctx, fwk, state, pod)
+
+	// Tell the sniffer about the suggested host
+	if err == nil {
+		Send(ctx, "schedulePod", pod.Name, scheduleResult.SuggestedHost, "ScheduleSuccess")
+	}
+
 	if err != nil {
 		defer func() {
 			metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
@@ -236,7 +241,6 @@ func (sched *Scheduler) schedulingCycle(
 		if forgetErr := sched.Cache.ForgetPod(logger, assumedPod); forgetErr != nil {
 			logger.Error(forgetErr, "Scheduler cache ForgetPod failed")
 		}
-
 		if runPermitStatus.IsRejected() {
 			fitErr := &framework.FitError{
 				NumAllNodes: 1,
@@ -300,6 +304,9 @@ func (sched *Scheduler) bindingCycle(
 	if status := sched.bind(ctx, fwk, assumedPod, scheduleResult.SuggestedHost, state); !status.IsSuccess() {
 		return status
 	}
+
+	// I thought this was the closest to the source of truth we can get, but I don't see this event yet
+	Send(ctx, "bindingCycle", assumedPod.Name, scheduleResult.SuggestedHost, "BindingSuccess")
 
 	// Calculating nodeResourceString can be heavy. Avoid it if klog verbosity is below 2.
 	logger.V(2).Info("Successfully bound pod to node", "pod", klog.KObj(assumedPod), "node", scheduleResult.SuggestedHost, "evaluatedNodes", scheduleResult.EvaluatedNodes, "feasibleNodes", scheduleResult.FeasibleNodes)
@@ -406,6 +413,8 @@ func (sched *Scheduler) schedulePod(ctx context.Context, fwk framework.Framework
 	}
 	trace.Step("Computing predicates done")
 
+	// TODO: we might want to send over data about scheduling errors too
+	// right now we are just going to look at scheduled pods->nodes
 	if len(feasibleNodes) == 0 {
 		return result, &framework.FitError{
 			Pod:         pod,
@@ -414,7 +423,6 @@ func (sched *Scheduler) schedulePod(ctx context.Context, fwk framework.Framework
 		}
 	}
 
-	// When only one node after predicate, just use it.
 	if len(feasibleNodes) == 1 {
 		return ScheduleResult{
 			SuggestedHost:  feasibleNodes[0].Node().Name,

@@ -19,7 +19,7 @@ kind load docker-image ${REGISTRY}/scheduler-sniffer:latest
 kind load docker-image ${REGISTRY}/sniffer-sidecar:latest
 
 # And then install using the charts. The pull policy ensures we use the loaded ones
-cd ${ROOT}/upstream/manifests/install/charts
+cd ${ROOT}/upstreams/sig-scheduler-plugins/manifests/install/charts
 helm uninstall sniffer || true
 helm install \
   --set sniffer.pullPolicy=Never \

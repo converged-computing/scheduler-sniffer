@@ -11,11 +11,13 @@ import (
 	"google.golang.org/grpc/keepalive"
 
 	pb "github.com/converged-computing/scheduler-sniffer/sniffer/api"
+	"github.com/converged-computing/scheduler-sniffer/sniffer/pkg/logger"
 	"github.com/converged-computing/scheduler-sniffer/sniffer/pkg/service"
 )
 
 const (
-	defaultPort = ":4242"
+	defaultPort    = ":4242"
+	defaultLogfile = "/tmp/sniffer.log"
 )
 
 var responsechan chan string
@@ -25,12 +27,17 @@ func main() {
 
 	flag.Parse()
 
+	// Sniffer logger to file and to terminal
+	// This can eventually be a flag, but just going to set for now
+	// It shall be a very chonky file. Oh lawd he comin!
+	l := logger.NewDebugLogger(logger.LevelDebug, "/tmp/sniffer.log")
+
 	// Ensure our port starts with :
 	port := *grpcPort
 	if !strings.HasPrefix(":", port) {
 		port = fmt.Sprintf(":%s", port)
 	}
-	sniffer := service.Sniffer{}
+	sniffer := service.Sniffer{Logger: l}
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {

@@ -4,7 +4,7 @@ LIB_PREFIX ?= /usr/lib
 LOCALBIN ?= $(shell pwd)/bin
 LOCAL_REGISTRY=localhost:5000
 LOCAL_IMAGE=sniffer-sidecar:latest
-RELEASE_VERSION?=v$(shell date +%Y%m%d)-$(shell git describe --tags --match "v*")
+RELEASE_VERSION?=v$(shell date +%Y%m%d)
 
 .PHONY: all
 all: build
@@ -14,12 +14,12 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 .PHONY: proto build
-build: 
+build:
 	docker build -f Dockerfile --build-arg ARCH="amd64" --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(LOCAL_REGISTRY)/$(LOCAL_IMAGE) .
 
 .PHONY: sniffer
 sniffer: 
-	$(COMMONENVVAR) $(BUILDENVVAR) go build -ldflags '-w' -o bin/sniffer cmd/main.go
+	go build -ldflags '-w' -o bin/sniffer cmd/main.go
 
 .PHONY: protoc
 protoc: $(LOCALBIN)

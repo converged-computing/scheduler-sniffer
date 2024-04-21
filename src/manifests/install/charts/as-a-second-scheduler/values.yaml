@@ -13,6 +13,7 @@ sniffer:
   pullPolicy: Always
   port: 4242
 
+# Here we use the default (no change)
 controller:
   name: scheduler-plugins-controller
   image: registry.k8s.io/scheduler-plugins/controller:v0.27.8

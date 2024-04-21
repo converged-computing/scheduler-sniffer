@@ -23,10 +23,10 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/clientgo" // for rest client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/version"  // for version metric registration
 
-	// Uncomment here for a local one here we use to debug
 	// This was a clone from kubernetes/kubernetes -> cmd/app
-	"sigs.k8s.io/scheduler-plugins/cmd/app"
-	//"k8s.io/kubernetes/cmd/kube-scheduler/app"
+	// This is how our custom scheduler uses our custom kubernetes
+	//"sigs.k8s.io/scheduler-plugins/cmd/app"
+	"k8s.io/kubernetes/cmd/kube-scheduler/app"
 
 	// Ensure scheme package is initialized.
 	_ "sigs.k8s.io/scheduler-plugins/apis/config/scheme"
@@ -40,4 +40,3 @@ func main() {
 	code := cli.Run(command)
 	os.Exit(code)
 }
-

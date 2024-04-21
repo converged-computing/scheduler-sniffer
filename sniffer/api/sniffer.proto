@@ -10,7 +10,11 @@ service SnifferService {
 
 message SendRequest {
     string endpoint = 1;
-    string payload = 2;
+    string pod = 2;
+    string node = 3;
+    string event = 4;
+    string payload = 5;
+    string timestamp = 6;
 }
 
 message SendResponse {}
