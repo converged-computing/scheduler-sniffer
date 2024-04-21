@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sniffer-job
+spec:
+  template:
+    spec:
+      schedulerName: sniffer
+      containers:
+      - name: sniffer-job
+        image: busybox
+        command: [echo, potato]
+      restartPolicy: Never
+  backoffLimit: 4
