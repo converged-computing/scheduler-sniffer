@@ -13,6 +13,10 @@ sniffer:
   pullPolicy: Always
   port: 4242
 
+watcher:
+  image: ghcr.io/converged-computing/watcher-sidecar:latest
+  pullPolicy: Always
+
 # Here we use the default (no change)
 controller:
   name: scheduler-plugins-controller

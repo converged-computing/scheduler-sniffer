@@ -53,6 +53,19 @@ spec:
         - /go/src/sniffer/bin/sniffer
         - --port={{ .Values.sniffer.port }}
         name: sniffer
+        volumeMounts:
+        - name: logs-data
+          mountPath: /tmp/logs
+
+      # The watcher is running informers to see deletion events, etc.
+      - image: {{ .Values.sniffer.image }}
+        imagePullPolicy: {{ .Values.sniffer.pullPolicy }}
+        command:
+        - /go/src/sniffer/bin/watcher
+        name: watcher
+        volumeMounts:
+        - name: logs-data
+          mountPath: /tmp/logs
 
       # This is the custom scheduler that ALSO builds kubernetes -> scheduler
       - command:
@@ -87,3 +100,6 @@ spec:
       - name: scheduler-config
         configMap:
           name: scheduler-config
+      # This is a shared empty directory to write logs
+      - name: logs-data
+        emptyDir: {}

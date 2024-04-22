@@ -16,21 +16,20 @@ import (
 )
 
 const (
-	defaultPort    = ":4242"
-	defaultLogfile = "/tmp/sniffer.log"
+	defaultPort = ":4242"
 )
 
 var responsechan chan string
 
 func main() {
 	grpcPort := flag.String("port", defaultPort, "Port for grpc service")
-
+	logfile := flag.String("logfile", logger.DefaultLogFile, "Default log file to write to")
 	flag.Parse()
 
 	// Sniffer logger to file and to terminal
 	// This can eventually be a flag, but just going to set for now
 	// It shall be a very chonky file. Oh lawd he comin!
-	l := logger.NewDebugLogger(logger.LevelDebug, "/tmp/sniffer.log")
+	l := logger.NewDebugLogger(logger.LevelDebug, *logfile)
 
 	// Ensure our port starts with :
 	port := *grpcPort
