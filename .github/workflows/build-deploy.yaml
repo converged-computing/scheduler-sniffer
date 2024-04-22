@@ -1,0 +1,80 @@
+name: sniffer build-and deploy
+
+on:
+  pull_request: []
+  release:
+    types: [published]
+  push:
+    branches:
+    - main
+
+jobs:
+  build-sniffer:
+    permissions:
+      packages: write
+    env:
+      container: ghcr.io/converged-computing/sniffer
+    runs-on: ubuntu-latest
+    name: build sniffer
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v4
+      with:
+        go-version: ^1.21
+
+    - name: Build Containers
+      run: make build-sidecar
+
+    - name: Tag Release Image
+      if: (github.event_name == 'release')
+      run: |
+        tag=${GITHUB_REF#refs/tags/}
+        echo "Tagging and releasing ${{ env.container}}:${tag}"        
+        docker tag ${{ env.container }}:latest ${{ env.container }}:${tag}
+
+    - name: GHCR Login
+      if: (github.event_name != 'pull_request')
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Deploy Container
+      if: (github.event_name != 'pull_request')
+      run: docker push ${{ env.container }} --all-tags
+
+  build-scheduler-sniffer:
+    permissions:
+      packages: write
+    env:
+      container: ghcr.io/converged-computing/scheduler-sniffer
+    runs-on: ubuntu-latest
+    name: build scheduler-sniffer
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v4
+      with:
+        go-version: ^1.21
+
+    - name: Build Containers
+      run: make build
+
+    - name: Tag Release Image
+      if: (github.event_name == 'release')
+      run: |
+        tag=${GITHUB_REF#refs/tags/}
+        echo "Tagging and releasing ${{ env.container}}:${tag}"        
+        docker tag ${{ env.container }}:latest ${{ env.container }}:${tag}
+
+    - name: GHCR Login
+      if: (github.event_name != 'pull_request')
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Deploy Container
+      if: (github.event_name != 'pull_request')
+      run: docker push ${{ env.container }} --all-tags

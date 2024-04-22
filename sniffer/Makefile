@@ -18,8 +18,15 @@ build:
 	docker build -f Dockerfile --build-arg ARCH="amd64" --build-arg RELEASE_VERSION="$(RELEASE_VERSION)" -t $(LOCAL_REGISTRY)/$(LOCAL_IMAGE) .
 
 .PHONY: sniffer
-sniffer: 
-	go build -ldflags '-w' -o bin/sniffer cmd/main.go
+sniffer: service watcher
+
+.PHONY: service
+service: 
+	go build -ldflags '-w' -o bin/sniffer cmd/service/service.go
+
+.PHONY: watcher
+watcher: 
+	go build -ldflags '-w' -o bin/watcher cmd/watcher/watcher.go
 
 .PHONY: protoc
 protoc: $(LOCALBIN)

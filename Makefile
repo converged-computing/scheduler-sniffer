@@ -17,7 +17,7 @@ ARCH ?= "amd64"
 # These are passed to build the sidecar
 REGISTRY ?= ghcr.io/converged-computing
 SCHEDULER_IMAGE ?= scheduler-sniffer
-SIDECAR_IMAGE ?= sniffer-sidecar:latest
+SIDECAR_IMAGE ?= sniffer:latest
 
 .PHONY: all build clone update
 all: prepare build-sidecar build
@@ -35,7 +35,7 @@ prepare: clone clone-k8s
 	# This ensures the sig-scheduler image has the same grpc
 	cp -R sniffer/api $(UPSTREAM_K8S)/pkg/sniffer
 
-    # These basically allow us to wrap the default scheduler so we can run the command (and trace it)
+	# These basically allow us to wrap the default scheduler so we can run the command (and trace it)
 	cp scheduler/* $(UPSTREAM_K8S)/pkg/scheduler/
 	cp src/cmd/scheduler/main.go $(UPSTREAM)/cmd/scheduler/main.go
 	cp src/manifests/install/charts/as-a-second-scheduler/templates/*.yaml $(UPSTREAM)/manifests/install/charts/as-a-second-scheduler/templates/

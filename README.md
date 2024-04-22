@@ -38,13 +38,24 @@ kubectl get events -o wide |  awk {'print $4" " $5" " $6'} | column -t | grep sn
 You can also look at the sniffer logs to see the binding events printed:
 
 ```bash
-$ kubectl exec sniffer-57f85c77d8-lgx9j -- cat /tmp/sniffer.log
-Defaulted container "sniffer" out of: sniffer, scheduler
-  DEBUG:  {"pod":"job-z2m8m","endpoint":"schedulePod","node":"kind-control-plane","event":"ScheduleSuccess","timestamp":"2024-04-21 20:54:05.171920853 +0000 UTC m=+78.753596979"}
-  DEBUG:  {"pod":"job-z2m8m","endpoint":"bindingCycle","node":"kind-control-plane","event":"BindingSuccess","timestamp":"2024-04-21 20:54:05.184822919 +0000 UTC m=+78.766499043"}
+$ kubectl exec -it sniffer-74c76ff4f8-hrqdn -c watcher -- cat /tmp/logs/sniffer.log
+```
+```console
+{"object":"Pod","name":"local-path-provisioner-7577fdbbfb-w84m2","endpoint":"podUpdate","event":"ContainersReady","timestamp":"2024-04-20 18:22:03 +0000 UTC"}
+{"object":"Pod","name":"local-path-provisioner-7577fdbbfb-w84m2","endpoint":"podUpdate","event":"PodScheduled","timestamp":"2024-04-20 18:22:00 +0000 UTC"}
 ```
 
-This is still early in development, more soon.
+You can grep for "Node" or "Pod" to filter events:
+
+```bash
+$ kubectl exec -it sniffer-74c76ff4f8-hrqdn -c watcher -- cat /tmp/logs/sniffer.log | grep Node
+```
+```console
+{"object":"Node","name":"kind-control-plane","endpoint":"nodeUpdate","reason":"KubeletReady","message":"kubelet is posting ready status","event":"Ready","timestamp":"2024-04-22 01:08:24 +0000 UTC"}
+{"object":"Node","name":"kind-control-plane","endpoint":"nodeUpdate","extra":{"capacity-cpu":"12","capacity-ephemeral-storage":"1921208544Ki","capacity-hugepages-1Gi":"0","capacity-hugepages-2Mi":"0","capacity-memory":"32512128Ki","capacity-pods":"110","allocatable-hugepages-2Mi":"0","allocatable-memory":"32512128Ki","allocatable-pods":"110","allocatable-cpu":"12","allocatable-ephemeral-storage":"1921208544Ki","allocatable-hugepages-1Gi":"0"}}
+```
+
+This is still early in development, more soon. I think likely we will need to update the output file to an actual database.
 
 ### Build Logic
 

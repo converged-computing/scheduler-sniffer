@@ -16,13 +16,13 @@ make
 
 # We load into kind so we don't need to push/pull and use up internet data ;)
 kind load docker-image ${REGISTRY}/scheduler-sniffer:latest
-kind load docker-image ${REGISTRY}/sniffer-sidecar:latest
+kind load docker-image ${REGISTRY}/sniffer:latest
 
 # And then install using the charts. The pull policy ensures we use the loaded ones
 cd ${ROOT}/upstreams/sig-scheduler-plugins/manifests/install/charts
 helm uninstall sniffer || true
 helm install \
   --set sniffer.pullPolicy=Never \
-  --set sniffer.image=${REGISTRY}/sniffer-sidecar:latest \
+  --set sniffer.image=${REGISTRY}/sniffer:latest \
   --set scheduler.image=${REGISTRY}/scheduler-sniffer:latest \
   --set scheduler.pullPolicy=Never sniffer as-a-second-scheduler/

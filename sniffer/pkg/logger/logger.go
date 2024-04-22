@@ -19,6 +19,12 @@ const (
 	LevelDebug
 )
 
+// This should correspond to a shared empty dir if being
+// used alongside the scheduler-sniffer
+var (
+	DefaultLogFile = "/tmp/logs/sniffer.log"
+)
+
 type DebugLogger struct {
 	level    int
 	Filename string
@@ -49,20 +55,21 @@ func (l *DebugLogger) Stop() error {
 }
 
 // Logging functions you should use!
+// Note that prefixes are disabled because we want to parse json in each line
 func (l *DebugLogger) Info(message ...any) error {
-	return l.log(LevelInfo, "   INFO: ", message...)
+	return l.log(LevelInfo, "", message...)
 }
 func (l *DebugLogger) Error(message ...any) error {
-	return l.log(LevelError, "  ERROR: ", message...)
+	return l.log(LevelError, "", message...)
 }
 func (l *DebugLogger) Debug(message ...any) error {
-	return l.log(LevelDebug, "  DEBUG: ", message...)
+	return l.log(LevelDebug, "", message...)
 }
 func (l *DebugLogger) Verbose(message ...any) error {
-	return l.log(LevelVerbose, "VERBOSE: ", message...)
+	return l.log(LevelVerbose, "", message...)
 }
 func (l *DebugLogger) Warning(message ...any) error {
-	return l.log(LevelWarning, "WARNING: ", message...)
+	return l.log(LevelWarning, "", message...)
 }
 
 // log is the shared class function for actually printing to the log
