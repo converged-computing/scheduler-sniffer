@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ service_name }}
+spec:
+  clusterIP: None
+  selector:
+    job-name: {{ name }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  # name will be derived based on iteration
+  name: {{ name }}
+spec:
+  completions: {{ size }}
+  parallelism: {{ size }}
+  completionMode: Indexed
+  template:
+    metadata:
+      labels:
+        app: {{ name }}
+    spec:
+      subdomain: {{ service_name }}
+{% if scheduler %}
+      schedulerName: {{ scheduler }}{% endif %}
+      restartPolicy: Never
+      containers:
+      - name: example-workload
+        image: bash:latest
+        resources:
+          limits:
+            cpu: "{{ cpu_limit }}"
+          requests:
+            cpu: "{{ cpu_limit }}"
+        command:
+        - bash
+        - -c
+        - |
+          if [ $JOB_COMPLETION_INDEX -ne "0" ]
+            then
+              sleep infinity
+          fi
+          echo "START: $(date +%s%N | cut -b1-13)"
+          for i in {{ size_range }}
+          do
+            gotStatus="-1"
+            wantStatus="0"             
+            while [ $gotStatus -ne $wantStatus ]
+            do                                       
+              ping -c 1 {{ name }}-${i}.{{ service_name }} > /dev/null 2>&1
+              gotStatus=$?                
+              if [ $gotStatus -ne $wantStatus ]; then
+                echo "Failed to ping pod {{ name }}-${i}.{{ service_name }}, retrying in 1 second..."
+                sleep 1
+              fi
+            done                                                         
+            echo "Successfully pinged pod: {{ name }}-${i}.{{ service_name }}"
+          done
+          echo "DONE: $(date +%s%N | cut -b1-13)"
+          # echo "DONE: $(date +%s)"

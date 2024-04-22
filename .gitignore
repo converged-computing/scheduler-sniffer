@@ -1,3 +1,5 @@
 upstreams
 sniffer/bin
 sniffer/vendor
+docs/_site
+docs/Gemfile.lock
