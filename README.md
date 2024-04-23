@@ -87,7 +87,7 @@ It would be cool to do this with eBPF, but I haven't found a good, working conta
 Things to track for the simulator:
 - keep track of pod to node mappings (this is the basic unit of what we need)
 - node occupancy and time (which nodes contain which pods at what point)
- - TODO this means we need to figure out how to tell when a pod is "unmapped"
+ - TODO we likely want to use a database proper instead of a log file for larger runs
 
 This will be a replacement for the in-tree Kubernetes scheduler, with the intention of adding a small service to ping and communicate
 scheduling decisions. This is not meant for production use cases, but rather understanding what is happening in the scheduler. It 

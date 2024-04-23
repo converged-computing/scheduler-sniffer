@@ -8,7 +8,6 @@ import (
 	"github.com/converged-computing/scheduler-sniffer/sniffer/pkg/types"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
 )
 
 var (
@@ -27,12 +26,17 @@ func (w *Watcher) saveDatum(datum types.SnifferDatum) {
 
 // savePodData saves events for a pod
 func (w *Watcher) savePodData(pod *corev1.Pod, endpoint string) {
+
+	// If it's Pending, don't save
+	if string(pod.Status.Phase) == "Pending" {
+		return
+	}
 	w.saveDatum(
 		types.SnifferDatum{
 			Name:     pod.Name,
 			Object:   "Pod",
 			Endpoint: endpoint,
-			Node:     pod.Status.NominatedNodeName,
+			Node:     pod.Spec.NodeName,
 			Event:    string(pod.Status.Phase),
 		},
 	)
@@ -52,6 +56,7 @@ func (w *Watcher) savePodData(pod *corev1.Pod, endpoint string) {
 			ts = timestamp.String()
 		}
 
+		// If no timestamp, we save anyway, but don't (can't) use
 		w.saveDatum(
 			types.SnifferDatum{
 				Name:      pod.Name,
@@ -59,7 +64,7 @@ func (w *Watcher) savePodData(pod *corev1.Pod, endpoint string) {
 				Message:   condition.Message,
 				Object:    "Pod",
 				Endpoint:  endpoint,
-				Node:      pod.Status.NominatedNodeName,
+				Node:      pod.Spec.NodeName,
 				Event:     string(condition.Type),
 				Timestamp: ts,
 			},
@@ -79,7 +84,6 @@ func (w *Watcher) saveNodeData(node *corev1.Node, endpoint string) {
 		extra = fmt.Sprintf(`%s "allocatable-%s": "%s",`, extra, name, quantity.String())
 	}
 	extra = strings.TrimRight(extra, ",") + "}"
-	fmt.Println(extra)
 	w.saveDatum(
 		types.SnifferDatum{
 			Name:     node.Name,
@@ -124,18 +128,21 @@ func (w *Watcher) podAdd(obj interface{}) {
 	if pod.Namespace == ignoreNs {
 		return
 	}
+	fmt.Printf("ADD START%s\n", pod.Spec.NodeName)
 	w.savePodData(pod, "podAdd")
-	klog.Infof("POD CREATED: %s/%s", pod.Namespace, pod.Name)
+	fmt.Printf("ADD END%s\n", pod.Spec.NodeName)
 }
 
 func (w *Watcher) podUpdate(oldObj interface{}, newObj interface{}) {
 	oldPod := oldObj.(*corev1.Pod)
 	newPod := newObj.(*corev1.Pod)
-
 	if oldPod.Namespace == ignoreNs || newPod.Namespace == ignoreNs {
 		return
 	}
+	fmt.Printf("UPDATE START%s\n", newPod.Spec.NodeName)
+	w.savePodData(oldPod, "podUpdate")
 	w.savePodData(newPod, "podUpdate")
+	fmt.Printf("UPDATE END%s\n", newPod.Spec.NodeName)
 }
 
 func (w *Watcher) podDelete(obj interface{}) {
@@ -143,28 +150,22 @@ func (w *Watcher) podDelete(obj interface{}) {
 	if pod.Namespace == ignoreNs {
 		return
 	}
+	fmt.Printf("DELETE START%s\n", pod.Spec.NodeName)
 	w.savePodData(pod, "podDelete")
-	klog.Infof("POD DELETED: %s/%s", pod.Namespace, pod.Name)
+	fmt.Printf("DELETE END%s\n", pod.Spec.NodeName)
 }
 
 func (w *Watcher) nodeAdd(obj interface{}) {
 	node := obj.(*corev1.Node)
 	w.saveNodeData(node, "nodeAdd")
-	klog.Infof("NODE CREATED: %s", node)
 }
 
 func (w *Watcher) nodeUpdate(oldObj interface{}, newObj interface{}) {
-	oldNode := oldObj.(*corev1.Node)
 	newNode := newObj.(*corev1.Node)
 	w.saveNodeData(newNode, "nodeUpdate")
-	klog.Infof(
-		"NODE UPDATED. %s/%s %s",
-		oldNode, newNode, newNode.Status.Phase,
-	)
 }
 
 func (w *Watcher) nodeDelete(obj interface{}) {
 	node := obj.(*corev1.Node)
 	w.saveNodeData(node, "nodeDeleted")
-	klog.Infof("NODE DELETED: %s", node)
 }

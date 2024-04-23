@@ -1,0 +1,37 @@
+# Site Settings
+lang: en
+
+title: Scheduler Sniffer
+
+url: ""
+baseurl: "/scheduler-sniffer"
+permalink: /:year-:title/
+
+plugins:
+  - jekyll-sitemap
+  - jekyll-paginate
+  - jekyll-feed
+  - jekyll-seo-tag
+
+exclude: 
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+
+# Not sure if we will use this yet
+defaults:
+  -
+    scope:
+      path: "_clusters"
+      type: "clusters"
+    values:
+      layout: clusters
+
+markdown: kramdown
+highlighter: rouge
+
+# Collections
+collections:
+  clusters:
+    output: true
+    permalink: /:collection/:path/
