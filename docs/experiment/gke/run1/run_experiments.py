@@ -20,17 +20,12 @@ here = os.path.dirname(os.path.abspath(__file__))
 # Hard coded experiment templates
 job_template = os.path.join(here, "crd", "job.yaml")
 
-# 2 (1 cpu), 3/4/5/6 (2 cpu)
-# NOTE size needs to be unique here
 mixed_config = [
-    # Note if you set this to 1 fluence won't schedule it, it will
-    # always check that the size makes sense for the resources. We'd need
-    # to remove that check if we want to force this.
-    {"cpu_limit": 2, "size": 2},
-    {"cpu_limit": 2, "size": 3},
-    {"cpu_limit": 2, "size": 4},
-    {"cpu_limit": 2, "size": 5},
-    {"cpu_limit": 2, "size": 6},
+    {"cpu_limit": 1, "size": 2},
+    {"cpu_limit": 1, "size": 3},
+    {"cpu_limit": 1, "size": 4},
+    {"cpu_limit": 1, "size": 5},
+    {"cpu_limit": 1, "size": 6},
 ]
 
 # Pair up configs and named templates
@@ -261,14 +256,6 @@ def get_logs(uid, meta, submit_time, batch_end_time, log_dir, node_topology):
     # We need to delete the job because pods 1-N will remain running
     delete_job(name)
 
-    # Clean up the pod group, if using fluence
-    service = meta["params"].get("service_name")
-    if scheduler in ["fluence", "coscheduling"]:
-        delete_podgroup(label)
-    if service is not None:
-        delete_service(service)
-
-
 def process_error_handler(e):
     """
     A simple process that prints and raises the error.
@@ -366,6 +353,7 @@ def run(args, config_name, node_topology):
                         "size_range": " ".join([str(x) for x in range(0, size)]),
                         "service_name": service_name,
                         "scheduler": scheduler,
+                        "address": args.address,
                     }
                 )
 
@@ -423,9 +411,7 @@ def confirm_action(question):
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(
-        description="Test Kubernetes Sniffer Scheduler"
-    )
+    parser = argparse.ArgumentParser(description="Test Kubernetes Sniffer Scheduler")
     parser.add_argument(
         "--shuffle",
         action="store_true",
@@ -437,6 +423,10 @@ def get_parser():
         help="config name to use (defaults to mixed)",
     )
     parser.add_argument(
+        "--address",
+        help="Sniffer service address for containers to query",
+    )
+    parser.add_argument(
         "--batches",
         type=int,
         default=1,
@@ -445,8 +435,8 @@ def get_parser():
     parser.add_argument(
         "--iters",
         type=int,
-        default=10,
-        help="iterations to run per batch (defaults to 10)",
+        default=3,
+        help="iterations to run per batch (defaults to 3)",
     )
     parser.add_argument(
         "--outdir",
@@ -464,6 +454,9 @@ def main():
     if not os.path.exists(job_template):
         sys.exit(f"{job_template} does not exist.")
 
+    if not args.address:
+        sys.exit("The --address of the sniffer service is required")
+
     outdir = os.path.abspath(args.outdir)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
@@ -476,6 +469,7 @@ def main():
     print(f"▶️  Output directory: {outdir}")
     print(f"▶️       Config name: {args.config_name}")
     print(f"▶️        Iterations: {args.iters}")
+    print(f"▶️           Address: {args.address}")
     print(f"▶️           Batches: {args.batches}")
     print(f"▶️           Shuffle: {args.shuffle}")
 

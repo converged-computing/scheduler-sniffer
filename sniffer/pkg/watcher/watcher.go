@@ -16,6 +16,7 @@ import (
 type Watcher struct {
 	logfile string
 	log     *logger.DebugLogger
+	client  *kubernetes.Clientset
 }
 
 func NewWatcher(logfile string) *Watcher {
@@ -39,6 +40,8 @@ func (w *Watcher) Run() {
 	if err != nil {
 		panic(err)
 	}
+	// Set the client for future calling functions
+	w.client = clientSet
 
 	// stop signal for the informer
 	stopper := make(chan struct{})
@@ -65,12 +68,12 @@ func (w *Watcher) Run() {
 	}
 
 	podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    w.podAdd, // register add eventhandler
+		AddFunc:    w.podAdd,
 		UpdateFunc: w.podUpdate,
 		DeleteFunc: w.podDelete,
 	})
 	nodeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    w.nodeAdd, // register add eventhandler
+		AddFunc:    w.nodeAdd,
 		UpdateFunc: w.nodeUpdate,
 		DeleteFunc: w.nodeDelete,
 	})

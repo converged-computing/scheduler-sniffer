@@ -1,28 +1,3 @@
----
-title: Prototyping Scheduler Sniffer
-nodes: nodes.json
----
-
-This shows early work to make a plot for the scheduler sniffer. We are looking at only a few minutes of data (there are 100 intervals, each is just under one second) running Jobs on GKE c2d-standard-8 instances. We set resource limits generously (allowing more than one pod per node) so it does not clog. A few notes on the interface:
-
-- The data generation interface is started (but not finished yet) - the JavaScript logic needs to be added as an include in the collection.
-- We likely want to have lines (timestamps) for when things clogged
-- The time intervals are broken into 100 over a few minutes
-- We have to decide if we want to include "other" pods (not job related) - right now they aren't included
-- Node 5 likely has operator stuff (and other stuff) installed on it, and was chosen later
-
-And a few notes on the generation:
-
-- The start time of a pod assigned to a node is when there is a binding cycle success. We could also choose schedule cycle success. Those two events should be very close in time, in practice, but could be more different if the schedule is successful and the binding is delayed.
-- The end time of a pod assigned is triggered via a gRPC call from the pod directly to the sniffer service. Arguably this should be a sidecar and with a preStop hook, but in practice [this is problematic](https://github.com/kubernetes/kubernetes/issues/55807).
-
-We need to figure out how to next extend this to work with Fluence and custom schedulers. Ideally we can remove the complexity of needing to build kube-sched, but I'm not sure if that is the best approach. Here are the raw pod times so you can look across them:
-
-<details>
-
-<summary>Raw Pod Times</summary>
-
-<code><pre>
 {
     "job-0-1-size-4-0-pk2gs": {
         "start": "2024-04-23 19:51:43.883539",
@@ -553,11 +528,3 @@ We need to figure out how to next extend this to work with Fluence and custom sc
         "schedule_time": "2024-04-23 19:51:08.238633"
     }
 }
-</code></pre>
-
-</details>
-
-And finally, some questions:
-
-- should we use scheduleCycle event or bindingEvent (in this experiment they are very close, but might not be if clogging.
-- if we can establish relationship (diff) between the container start and binding (likely related to pull) we can simplify this into a deployment to run in the cluster, or an operator with a mutating webhook to add the sidecar (much better design)

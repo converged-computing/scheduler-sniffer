@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 
 import argparse
-import random
-import copy
 import json
-import multiprocessing
 import os
 import sys
-from collections import defaultdict
 from datetime import datetime, timedelta
-
-from jinja2 import Template
 
 here = os.path.dirname(os.path.abspath(__file__))
 
@@ -32,49 +26,48 @@ def read_file(filename):
     return content
 
 
-def format_datetime(x, fmt='%Y-%m-%d %H:%M:%S.%f'):
+def format_datetime(x, fmt="%Y-%m-%d %H:%M:%S.%f"):
     return datetime.strptime(x, fmt)
+
 
 def generate(args):
     """
     Generate nodes.json data from sniffer.log
     """
     log = read_file(args.log)
-    lines = [json.loads(x) for x in log.split('\n') if x.strip()]
-    
-    # If we are using fluence we need to add this to the Minicluster CRD to add to the Pod
-    scheduler = "sniffer"
+    lines = [json.loads(x) for x in log.split("\n") if x.strip()]
 
     # First create a lookup of all nodes - get from node and pod events
-    nodes = [x.get("node") for x in lines if x.get('node')]
-    nodes = [x.get("name") for x in lines if x.get('object') == "Node"]
-    nodes = set(nodes)
+    nodes = set([x.get("node") for x in lines if x.get("node")])
 
     # Create uid (integer) for each node
-    lookup = {i: node for i, node in enumerate(nodes)}
     reverse_lookup = {node: i for i, node in enumerate(nodes)}
 
     # First do a sanity check that each pod has one node
     assigned = {}
     for entry in lines:
-        if "node" not in entry:
+        if "node" not in entry or entry["object"] != "Pod":
             continue
-        if "event" in entry and entry['event'] != "ScheduleSuccess": 
-            continue
-        node = entry['node']
-        if entry["name"] in assigned and assigned[entry['name']] != node:
+        node = entry["node"]
+        if entry["name"] in assigned and assigned[entry["name"]] != node:
             raise ValueError(f"Pod {entry['name']} was assigned to two nodes!")
-        assigned[entry['name']] = node
+        assigned[entry["name"]] = node
 
     # Now we want to get the earlist and latest timestamps for schedule
     # and pod completed
-    schedule_times = [x.get('timestamp') for x in lines if x.get('event') == "ScheduleSuccess"]
-    schedule_times = [" ".join(x.split(' ')[0:2]) for x in schedule_times]
+    schedule_times = [
+        x.get("timestamp") for x in lines if x.get("event") == "BindingSuccess"
+    ]
+    schedule_times = [" ".join(x.split(" ")[0:2]) for x in schedule_times]
     schedule_times = [format_datetime(x[:-3]) for x in schedule_times]
 
-    complete_times = [x.get('timestamp') for x in lines if x.get('reason') == "PodCompleted"]
-    complete_times = [" ".join(x.split(' ')[0:2]) for x in complete_times]
-    complete_times = [format_datetime(x, fmt='%Y-%m-%d %H:%M:%S') for x in complete_times]
+    complete_times = [
+        x.get("timestamp") for x in lines if x.get("event") == "preStop"
+    ]
+    complete_times = [" ".join(x.split(" ")[0:2]) for x in complete_times]
+    complete_times = [
+        format_datetime(x[:-3]) for x in complete_times
+    ]
 
     min_schedule_time = min(schedule_times)
     max_schedule_time = max(schedule_times)
@@ -84,9 +77,11 @@ def generate(args):
     max_time = max(max_schedule_time, max_complete_time)
 
     # Break into intervals
-    diff = (max_time  - min_time ) / args.intervals
+    diff = (max_time - min_time) / args.intervals
     ts_intervals = []
     intervals = []
+    print(f"Interval time is {diff} seconds")
+    sys.exit()
     for i in range(args.intervals):
         intervals.append((min_time + diff * i).strftime("%H:%M:%S"))
         ts_intervals.append(min_time + diff * i)
@@ -94,36 +89,78 @@ def generate(args):
     ts_intervals.append(max_time)
 
     # Get start and end for each pod. This is inefficient
-    pods = [x.get("name") for x in lines if x.get('object') == "Pod"]
+    pods = [x.get("name") for x in lines if x.get("object") == "Pod"]
     pod_times = {}
+    pod_string_times = {}
     for pod in set(pods):
+        binding_time = None
         schedule_time = None
+        post_start_time = None
         complete_time = None
-        for line in reversed(lines):
+        for line in lines:
             if "timestamp" not in line:
                 continue
             # Let's use bindingSuccess since that implies binding to node
-            if not schedule_time and line.get('event') == "BindingSuccess" and line.get('name') == pod:
-                ts = " ".join(line.get('timestamp').split(' ')[0:2])
-                schedule_time = format_datetime(ts[:-3])                
-            elif not complete_time and line.get('reason') == "PodCompleted" and line.get('name') == pod:
-                ts = " ".join(line.get('timestamp').split(' ')[0:2])
-                complete_time = format_datetime(ts, fmt='%Y-%m-%d %H:%M:%S') 
-        # two None means never scheduled
-        if schedule_time is not None:
-            pod_times[pod] = {"start": schedule_time, "end": complete_time}  
-    
+            if (
+                not schedule_time
+                and line.get("event") == "ScheduleSuccess"
+                and line.get("name") == pod
+            ):
+                ts = " ".join(line.get("timestamp").split(" ")[0:2])
+                schedule_time = format_datetime(ts[:-3])
+            if (
+                not binding_time
+                and line.get("event") == "BindingSuccess"
+                and line.get("name") == pod
+            ):
+                ts = " ".join(line.get("timestamp").split(" ")[0:2])
+                binding_time = format_datetime(ts[:-3])
+            if (
+                not post_start_time
+                and line.get("event") == "postStart"
+                and line.get("name") == pod
+            ):
+                ts = " ".join(line.get("timestamp").split(" ")[0:2])
+                post_start_time = format_datetime(ts[:-3])
+            if (
+                not complete_time
+                and line.get("event") == "preStop"
+                and line.get("name") == pod
+            ):
+                ts = " ".join(line.get("timestamp").split(" ")[0:2])
+                complete_time = format_datetime(ts[:-3])
+
+        # IMPORTANT: we are missing data here - there are pods that don't have completion timestamps
+        # But they do have failures
+        if binding_time is not None and complete_time is not None:
+            pod_times[pod] = {
+                "start": binding_time,
+                "end": complete_time,
+                "post_start": post_start_time,
+                "schedule_time": schedule_time,
+            }
+            pod_string_times[pod] = {
+                "start": str(binding_time),
+                "end": str(complete_time),
+                "post_start": str(post_start_time),
+                "schedule_time": str(schedule_time),
+            }
+
+    # Save pod times to look at later:
+    outdir = os.path.dirname(args.outfile)
+    pod_times_file = os.path.join(outdir, "pod-times.json")
+    write_json(pod_string_times, pod_times_file)
+
     # Keep a count of pods in each interval
-    # QUESTION: do we want to filter down to job pods?    
+    # QUESTION: do we want to filter down to job pods?
     active = {}
     for i, start_interval_dt in enumerate(ts_intervals):
-
         if intervals[i] not in active:
             active[intervals[i]] = {"nodes": {}, "interval": i}
 
         end_interval_dt = None
         if i < len(ts_intervals) - 1:
-            end_interval_dt = ts_intervals[i+1]
+            end_interval_dt = ts_intervals[i + 1]
         else:
             end_interval_dt = ts_intervals[-1] + timedelta(minutes=1)
 
@@ -133,22 +170,20 @@ def generate(args):
             if pod not in assigned:
                 continue
             node_id = reverse_lookup[assigned[pod]]
-            if times['start'] < start_interval_dt:
-                if node_id not in active[intervals[i]]:
+            if times["start"] < start_interval_dt:
+                if node_id not in active[intervals[i]]["nodes"]:
                     active[intervals[i]]["nodes"][node_id] = 0
-
-                # It never completed
-                if times['end'] is not None and times["end"] >= end_interval_dt:
-                    active[intervals[i]]["nodes"][node_id] +=1
-                elif times['end'] is None:
-                    active[intervals[i]]["nodes"][node_id] +=1
+                if times["end"] is not None and times["end"] >= end_interval_dt:
+                    active[intervals[i]]["nodes"][node_id] += 1
+                elif times["end"] is None:
+                    print("Found end times None")
 
     # Now construct the final data
     entries = []
     for ts, entry in active.items():
-        for node_id, count in entry['nodes'].items():    
+        for node_id, count in entry["nodes"].items():
             if count > 0:
-                 entries.append([entry['interval'], node_id, count])
+                entries.append([entry["interval"], node_id, count])
 
     # Note that scheduleSuccess and BindingSuccess are REALLY CLOSE
     # Since we care about scheduler cycle, let's arbitrarily use first
@@ -156,7 +191,7 @@ def generate(args):
     # event "PodCompleted" for same pod assigned to node
     # This means we aren't including pods already there
     # Assemble records.
-    title = " ".join([x.capitalize() for x in args.name.split('-')])
+    title = " ".join([x.capitalize() for x in args.name.split("-")])
     data = {
         "id": args.name,
         "title": f"Experiment {title}",
@@ -164,7 +199,7 @@ def generate(args):
             # TODO what can we add here?
             "chart_options": {},
             "values": {"data": entries},
-        }
+        },
     }
 
     write_json([data], args.outfile)
@@ -184,9 +219,7 @@ def confirm_action(question):
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(
-        description="Convert sniffer.log to nodes.json"
-    )
+    parser = argparse.ArgumentParser(description="Convert sniffer.log to nodes.json")
     parser.add_argument(
         "log",
         help="sniffer.log file",

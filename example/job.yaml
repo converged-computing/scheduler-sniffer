@@ -3,12 +3,48 @@ kind: Job
 metadata:
   name: job
 spec:
+  backoffLimit: 4
   template:
     spec:
       schedulerName: sniffer
-      containers:
-      - name: job
-        image: busybox
-        command: [echo, potato]
       restartPolicy: Never
-  backoffLimit: 4
+      containers:
+
+      # The sidecar is going to issue the preStop signal
+      - image: vanessa/sniffer:latest
+#      - image: ghcr.io/converged-computing/sniffer:latest
+
+        # This assumes loaded into kind nodes
+        imagePullPolicy: Always
+        command: [sleep, infinity]
+        lifecycle:
+          postStart:
+            exec:
+              command:
+                - /go/src/sniffer/bin/notifier
+                - "--address"
+                - 10.28.2.3:4242
+                - "--stage"
+                - postStart
+                - "--event"
+                - postStart
+          preStop:
+            exec:
+              command:
+                - /go/src/sniffer/bin/notifier
+                - "--address"
+                - 10.28.2.3:4242
+                - "--stage"
+                - preStop
+                - "--event"
+                - preStop
+        name: job
+        env:
+        - name: SNIFFER_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: SNIFFER_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
